@@ -66,6 +66,16 @@ def default_finetune_recipe(
         )
     else:
         datamodule = run.Config(llm.SquadDataModule, seq_length=2048, global_batch_size=128, micro_batch_size=1)
+    
+    datamodule = run.Config(
+        llm.ChatMLDataModule,
+        dataset_root="argilla/magpie-ultra-v0.1",
+        seq_length=2048, 
+        global_batch_size=8, 
+        micro_batch_size=1, 
+        chat=True
+    )
+    
     recipe = run.Partial(
         llm.finetune,
         model=model,

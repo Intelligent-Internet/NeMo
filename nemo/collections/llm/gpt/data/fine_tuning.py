@@ -74,6 +74,7 @@ class FineTuningDataModule(pl.LightningDataModule):
         persistent_workers: bool = False,
         packed_sequence_specs: Optional["PackedSequenceSpecs"] = None,
         dataset_kwargs: Optional[Dict[str, Any]] = None,
+        chat: bool = False,
     ):
         super().__init__()
         self.seq_length = seq_length
@@ -120,7 +121,6 @@ class FineTuningDataModule(pl.LightningDataModule):
         """
         if self.packed_sequence_size > 0:
             from nemo.collections.llm.gpt.data.packed_sequence import prepare_packed_sequence_data
-
             if not self.train_path_packed.is_file():
                 prepare_packed_sequence_data(
                     input_path=self.train_path,
@@ -194,7 +194,13 @@ class FineTuningDataModule(pl.LightningDataModule):
 
     def train_dataloader(self) -> DataLoader:
         # pylint: disable=C0115,C0116
-        return self._create_dataloader(
+        data = self._create_dataset(
+                self.train_path if self.packed_sequence_size <= 0 else self.train_path_packed,
+                pack_metadata_path=None if self.packed_sequence_size <= 0 else self.pack_metadata,
+                max_num_samples=self.max_train_samples,
+                **self.dataset_kwargs,
+            )
+        loader = self._create_dataloader(
             self._create_dataset(
                 self.train_path if self.packed_sequence_size <= 0 else self.train_path_packed,
                 pack_metadata_path=None if self.packed_sequence_size <= 0 else self.pack_metadata,
@@ -203,7 +209,9 @@ class FineTuningDataModule(pl.LightningDataModule):
             ),
             mode="train",
         )
-
+        batch_test = next(iter(loader))
+        import ipdb; ipdb.set_trace()
+        return loader
     def val_dataloader(self) -> DataLoader:
         # pylint: disable=C0115,C0116
         return self._create_dataloader(
@@ -344,3 +352,22 @@ class FineTuningDataModule(pl.LightningDataModule):
         else:
             tokenizer_model_name = f"unknown_tokenizer_{hash(self.tokenizer)}"
         return tokenizer_model_name
+
+
+
+class ChatMLDataModule(FineTuningDataModule):
+
+    @property
+    def train_path(self) -> Path:
+        """Path to training dataset file"""
+        return str(self.dataset_root)
+    
+    @property
+    def validation_path(self) -> Path:
+        """Path to validation dataset file"""
+        return str(self.dataset_root)
+    
+    @property
+    def test_path(self) -> Path:
+        """Path to test dataset file"""
+        return str(self.dataset_root)
