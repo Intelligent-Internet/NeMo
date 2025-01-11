@@ -194,12 +194,6 @@ class FineTuningDataModule(pl.LightningDataModule):
 
     def train_dataloader(self) -> DataLoader:
         # pylint: disable=C0115,C0116
-        data = self._create_dataset(
-                self.train_path if self.packed_sequence_size <= 0 else self.train_path_packed,
-                pack_metadata_path=None if self.packed_sequence_size <= 0 else self.pack_metadata,
-                max_num_samples=self.max_train_samples,
-                **self.dataset_kwargs,
-            )
         loader = self._create_dataloader(
             self._create_dataset(
                 self.train_path if self.packed_sequence_size <= 0 else self.train_path_packed,
@@ -209,8 +203,6 @@ class FineTuningDataModule(pl.LightningDataModule):
             ),
             mode="train",
         )
-        batch_test = next(iter(loader))
-        import ipdb; ipdb.set_trace()
         return loader
     def val_dataloader(self) -> DataLoader:
         # pylint: disable=C0115,C0116

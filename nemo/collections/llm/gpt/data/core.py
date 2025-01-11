@@ -26,7 +26,7 @@ def get_dataset_root(name: str) -> Path:
     output.mkdir(parents=True, exist_ok=True)
     return output
 
-
+from tqdm import tqdm
 
 class ChatMLDataset(GPTSFTChatDataset):
     
@@ -35,13 +35,24 @@ class ChatMLDataset(GPTSFTChatDataset):
             self.file_path, 
             keep_in_memory=True
         )['train']
+        self.tokenized_dataset = []
+        for example in tqdm(self.indexed_dataset, desc="Processing dataset"):
+            self.tokenized_dataset.append(self._process_example(example))
+        print("Max seq length: ", self.max_seq_length)
+        # remove all samples that greater than max_seq_length
+        print("Samples before truncation: ", len(self.tokenized_dataset))
+        self.tokenized_dataset = [sample for sample in self.tokenized_dataset if len(sample['input_ids'][0]) <= self.max_seq_length]
+        print("Samples after truncation: ", len(self.tokenized_dataset))
+        # remove all samples without any mask
+        self.tokenized_dataset = [sample for sample in self.tokenized_dataset if sum(sample['mask'][0]) > 0]
+        print("Samples after removing samples without any mask: ", len(self.tokenized_dataset))
     
     def __len__(self):
-        return len(self.indexed_dataset)
+        return len(self.tokenized_dataset)
     
     def __getitem__(self, idx):
-        sample = self.indexed_dataset[idx]
-        return self._process_example(sample)
+        sample = self.tokenized_dataset[idx]
+        return sample
     
     def _process_example(self, example):
         """
@@ -57,7 +68,7 @@ class ChatMLDataset(GPTSFTChatDataset):
             conversation = conversation[1:]
         else:
             system_text = "You are a helpful assistant!"
-        system_text = f"<im_start>system\n{system_text}<im_end>"
+        system_text = f"<|im_start|>system\n{system_text}<|im_end|>"
         system_token_ids = self.tokenizer.text_to_ids(system_text)
         system_masks = [0] * len(system_token_ids)
         batched_token_ids.extend(system_token_ids)
@@ -65,7 +76,9 @@ class ChatMLDataset(GPTSFTChatDataset):
 
         for (i, item) in enumerate(conversation):
             if item["role"] == "user":
-                full_text = f"<im_start>user\n{item['content']}<im_end>"
+                #if 'Find the smallest integer $N$ such that all real numbers $c$, $|c|' in item['content']:
+                #    import ipdb; ipdb.set_trace()
+                full_text = f"<|im_start|>user\n{item['content']}<|im_end|>"
                 token_ids = self.tokenizer.text_to_ids(full_text)
                 masks = [0] * len(token_ids)
                 batched_token_ids.extend(token_ids)
@@ -73,7 +86,7 @@ class ChatMLDataset(GPTSFTChatDataset):
                 continue
 
             if item["role"] == "assistant":
-                full_text = f"<im_start>assistant\n{item['content']}<im_end>"
+                full_text = f"<|im_start|>assistant\n{item['content']}<|im_end|>"
                 token_ids = self.tokenizer.text_to_ids(full_text)
                 masks = [1] * len(token_ids)
                 batched_token_ids.extend(token_ids)
