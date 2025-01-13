@@ -70,7 +70,7 @@ def default_finetune_recipe(
     datamodule = run.Config(
         llm.ChatMLDataModule,
         dataset_root="argilla/magpie-ultra-v0.1",
-        seq_length=2048, 
+        seq_length=4096, 
         global_batch_size=8, 
         micro_batch_size=1, 
         chat=True

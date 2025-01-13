@@ -45,7 +45,7 @@ class Qwen2Config(GPTConfig):
     init_method_std: int = 0.02
     hidden_dropout: float = 0.0
     attention_dropout: float = 0.0
-    vocab_size: int = 151936
+    vocab_size: int = 152064
     share_embeddings_and_output_weights: Optional[bool] = False
     layernorm_epsilon: float = 1e-6
     rotary_base: float = 1000000.0

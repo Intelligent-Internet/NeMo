@@ -31,10 +31,23 @@ from tqdm import tqdm
 class ChatMLDataset(GPTSFTChatDataset):
     
     def _load_dataset(self):
-        self.indexed_dataset = load_dataset(
-            self.file_path, 
-            keep_in_memory=True
-        )['train']
+        hf_path = self.file_path.split(":")[0]
+        split = self.file_path.split(":")[1]
+        if split == "train":
+            self.indexed_dataset = load_dataset(
+                hf_path, 
+                keep_in_memory=True
+            )['train']
+        elif split == "validation":
+            self.indexed_dataset = load_dataset(
+                hf_path, 
+                keep_in_memory=True
+            )['train'].select(range(100))
+        else:
+            self.indexed_dataset = load_dataset(
+                hf_path, 
+                keep_in_memory=True
+            )['test']
         self.tokenized_dataset = []
         for example in tqdm(self.indexed_dataset, desc="Processing dataset"):
             self.tokenized_dataset.append(self._process_example(example))

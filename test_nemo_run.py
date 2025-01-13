@@ -4,28 +4,35 @@ import nemo_run as run
 def configure_checkpoint_conversion():
     return run.Partial(
         llm.import_ckpt,
-        model=llm.llama31_8b.model(),
-        source="hf://meta-llama/Meta-Llama-3.1-8B",
+        model=llm.qwen2_7b.model(),
+        source="hf://Qwen/Qwen2-7B",
         overwrite=False,
     )
 
+from pytorch_lightning.loggers import WandbLogger
+from nemo import lightning as nl
 
 def configure_finetuning_recipe(nodes: int = 1, gpus_per_node: int = 1):
-    recipe = llm.llama31_8b.finetune_recipe(
-        name="llama3_lora",
+    recipe = llm.qwen2_7b.finetune_recipe(
+        name="qwen2_lora",
         num_nodes=nodes,
         num_gpus_per_node=gpus_per_node,
     )
 
-    recipe.trainer.max_steps = 100
-    recipe.trainer.num_sanity_val_steps = 0
+    #recipe.log.wandb.project = "nemo"
+    #recipe.log.wandb.entity = "pvduy"
+    #recipe.log.wandb.name = "qwen2_lora"
+    # add wandb follow this: https://docs.nvidia.com/nemo-framework/user-guide/latest/nemo-2.0/migration/exp-manager.html
 
+    recipe.trainer.max_steps = 20000
+    recipe.trainer.num_sanity_val_steps = 0
+    
     # Async checkpointing doesn't work with PEFT
     recipe.trainer.strategy.ckpt_async_save = False
 
     # Need to set this to 1 since the default is 2
     recipe.trainer.strategy.context_parallel_size = 1
-    recipe.trainer.val_check_interval = 100
+    recipe.trainer.val_check_interval = 1000
 
     # This is currently required for LoRA/PEFT
     recipe.trainer.strategy.ddp = "megatron"
@@ -49,12 +56,10 @@ def local_executor_torchrun(nodes: int = 1, devices: int = 2) -> run.LocalExecut
 def run_finetuning():
     import_ckpt = configure_checkpoint_conversion()
     finetune = configure_finetuning_recipe(nodes=1, gpus_per_node=1)
-    #from nemo.collections.llm.recipes.llama32_1b import finetune_recipe
-    #finetune = finetune_recipe(name="llama32_1b_finetune", num_nodes=1, num_gpus_per_node=1)
     executor = local_executor_torchrun(nodes=finetune.trainer.num_nodes, devices=finetune.trainer.devices)
     executor.env_vars["CUDA_VISIBLE_DEVICES"] = "0"
 
-    with run.Experiment("llama3-8b-peft-finetuning") as exp:
+    with run.Experiment("qwen2-7b-peft-finetuning") as exp:
         exp.add(
             import_ckpt, executor=run.LocalExecutor(), name="import_from_hf"
         )  # We don't need torchrun for the checkpoint conversion

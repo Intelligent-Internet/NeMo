@@ -352,14 +352,14 @@ class ChatMLDataModule(FineTuningDataModule):
     @property
     def train_path(self) -> Path:
         """Path to training dataset file"""
-        return str(self.dataset_root)
+        return str(self.dataset_root) + ":train"
     
     @property
     def validation_path(self) -> Path:
         """Path to validation dataset file"""
-        return str(self.dataset_root)
+        return str(self.dataset_root) + ":validation"
     
     @property
     def test_path(self) -> Path:
         """Path to test dataset file"""
-        return str(self.dataset_root)
+        return str(self.dataset_root) + ":test"
